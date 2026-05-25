@@ -4,7 +4,6 @@ const saveBtn = document.getElementById('save');
 const statusDiv = document.getElementById('status');
 const voiceHint = document.getElementById('voiceHint');
 
-// Standard Kokoro voices as a fallback
 const DEFAULT_VOICES = [
     "af_bella", "af_sarah", "am_adam", "am_michael", 
     "bf_emma", "bf_isabella", "bm_george", "bm_lewis",
@@ -13,35 +12,38 @@ const DEFAULT_VOICES = [
 
 // Load saved settings when page opens
 document.addEventListener('DOMContentLoaded', () => {
-    chrome.storage.local.get(['apiUrl', 'voiceId'], (result) => {
+    chrome.storage.local.get(['apiUrl', 'voiceId', 'processingMode'], (result) => {
         if (result.apiUrl) apiUrlInput.value = result.apiUrl;
         populateVoices(result.apiUrl, result.voiceId || 'af_bella');
+
+        // FIX: Restore saved processing mode selection
+        if (result.processingMode === 'paragraph') {
+            document.getElementById('modeParagraph').checked = true;
+        } else {
+            document.getElementById('modeWhole').checked = true; // Default
+        }
     });
 });
 
-// Re-fetch voices if user changes the API URL and clicks outside the input
 apiUrlInput.addEventListener('blur', () => {
     populateVoices(apiUrlInput.value, voiceSelect.value);
 });
 
-// The function that hunts for the correct backend endpoint
 async function fetchVoicesFromAnyBackend(baseUrl) {
     const endpoints = [
-        '/v1/audio/voices',  // OpenAI compatible / Kokoro
-        '/v1/voices',        // Generic TTS 
-        '/api/voices',       // Common alternative wrapper
-        '/api/tts/speakers'  // Other custom wrappers
+        '/v1/audio/voices',  
+        '/v1/voices',        
+        '/api/voices',       
+        '/api/tts/speakers'  
     ];
 
     for (let endpoint of endpoints) {
         try {
             const response = await fetch(`${baseUrl}${endpoint}`);
             if (response.ok) {
-                const data = await response.json();
-                return data; // Success! Return the payload
+                return await response.json(); 
             }
         } catch (e) {
-            // Network error, CORS, or 404. Move to the next endpoint.
             continue; 
         }
     }
@@ -54,41 +56,33 @@ async function populateVoices(url, selectedVoice) {
     
     if (cleanUrl) {
         voiceHint.textContent = "⏳ Attempting to fetch voices...";
-        voiceHint.style.color = "#6b7280"; // Gray
+        voiceHint.style.color = "#6b7280";
 
         try {
             const data = await fetchVoicesFromAnyBackend(cleanUrl);
-            
-            // Extract voices handling different API JSON structures
             let extractedVoices = [];
-            if (data.voices && Array.isArray(data.voices)) {
-                extractedVoices = data.voices;
-            } else if (data.data && Array.isArray(data.data)) {
-                extractedVoices = data.data;
-            } else if (Array.isArray(data)) {
-                extractedVoices = data;
-            }
+            
+            if (data.voices && Array.isArray(data.voices)) extractedVoices = data.voices;
+            else if (data.data && Array.isArray(data.data)) extractedVoices = data.data;
+            else if (Array.isArray(data)) extractedVoices = data;
 
             if (extractedVoices.length > 0) {
-                // Map the array elements to string (handles if elements are objects with .id or .name)
                 voices = extractedVoices.map(v => typeof v === 'object' ? (v.id || v.name || v.voice_id) : v);
                 voiceHint.textContent = "✅ Voices successfully loaded from API.";
-                voiceHint.style.color = "#10b981"; // Green
+                voiceHint.style.color = "#10b981";
             } else {
                 throw new Error("API returned an empty list.");
             }
             
         } catch (error) {
-            console.warn("Could not fetch voices from API:", error);
             voiceHint.textContent = "⚠️ Could not connect to API to fetch voices. Using default list.";
-            voiceHint.style.color = "#eab308"; // Yellow/Orange
+            voiceHint.style.color = "#eab308";
         }
     } else {
         voiceHint.textContent = "Uses default list. Enter a valid API URL to fetch available voices dynamically.";
-        voiceHint.style.color = "#6b7280"; // Gray
+        voiceHint.style.color = "#6b7280";
     }
 
-    // Clear and populate the select dropdown
     voiceSelect.innerHTML = '';
     voices.forEach(voice => {
         const option = document.createElement('option');
@@ -97,22 +91,19 @@ async function populateVoices(url, selectedVoice) {
         voiceSelect.appendChild(option);
     });
 
-    // Restore previously selected voice if it exists in the updated list
     if (voices.includes(selectedVoice)) {
         voiceSelect.value = selectedVoice;
     } else if (voices.length > 0) {
-        // If the old voice doesn't exist on this new server, pick the first available one
         voiceSelect.value = voices[0];
     }
 }
 
-// Save settings
 saveBtn.addEventListener('click', () => {
-    const apiUrl = apiUrlInput.value.trim().replace(/\/$/, ''); // Clean URL
+    const apiUrl = apiUrlInput.value.trim().replace(/\/$/, '');
     const voiceId = voiceSelect.value;
+    const processingMode = document.querySelector('input[name="processingMode"]:checked').value;
 
-    chrome.storage.local.set({ apiUrl, voiceId }, () => {
-        // Show success status briefly
+    chrome.storage.local.set({ apiUrl, voiceId, processingMode }, () => {
         statusDiv.classList.add('visible');
         setTimeout(() => {
             statusDiv.classList.remove('visible');

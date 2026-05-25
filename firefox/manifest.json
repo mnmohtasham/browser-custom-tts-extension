@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Kokoro Web Reader",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Read web articles aloud using the Kokoro TTS engine.",
   "permissions": ["storage", "activeTab", "scripting"],
   "options_ui": { "page": "options.html", "open_in_tab": true },
@@ -33,3 +33,4 @@
     }
   }
 }
+

@@ -130,6 +130,16 @@
       <div class="hint" id="voiceHint">Uses default list. Enter a valid API URL to fetch available voices dynamically.</div>
     </div>
 
+    <div class="form-group">
+      <label>Text Processing Mode</label>
+      <div class="radio-group">
+        <input type="radio" id="modeWhole" name="processingMode" value="whole" checked>
+        <label for="modeWhole" style="display: inline-block; margin-right: 20px;">Whole Text</label>
+        <input type="radio" id="modeParagraph" name="processingMode" value="paragraph">
+        <label for="modeParagraph" style="display: inline-block;">Paragraph by Paragraph</label>
+      </div>
+    </div>
+
     <button id="save">Save Settings</button>
     <div id="status" class="status">Settings saved successfully!</div>
   </div>
